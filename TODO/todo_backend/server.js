@@ -2,53 +2,84 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const TodoModel = require('./models/Todo');
+require('dotenv').config(); // Load environment variables from .env
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect('mongodb://127.0.0.1:27017/TODO',
-    console.log('MongoDB connected')
-)
+// MongoDB connection (updated)
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => console.error('❌ MongoDB connection error:', err));
 
-app.listen(5000,
-    console.log('Server listening on port: 5000')
-)
+// Routes
 
-app.post('/add', (req, res) => {
-  const { task } = req.body;
-  TodoModel.create({ task })
-      .then(result => res.json(result))
-      .catch(err => console.log(err));
-   
+// Add a new todo
+app.post('/add', async (req, res) => {
+  try {
+    const { task } = req.body;
+    const result = await TodoModel.create({ task });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add todo' });
+  }
 });
 
-app.get('/get',(req,res)=>{
-  TodoModel.find()
-  .then(result=> res.json(result))
-  .catch(err=>console.log(err));
+// Get all todos
+app.get('/get', async (req, res) => {
+  try {
+    const todos = await TodoModel.find();
+    res.json(todos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch todos' });
+  }
 });
-  
-app.put('/edit/:id',(req,res)=>{
-  const{id} = req.params;
-  TodoModel.findByIdAndUpdate(id,{done:true},{new:true})
-  .then(result=> res.json(result))
-  .catch(err=>res.json(err));
- });
 
-app.put('/update/:id',(req,res)=>{
-  const{id} = req.params;
-  const{task} = req.body;
-  TodoModel.findByIdAndUpdate(id,{task:task})
-  .then(result=> res.json(result))
-  .catch(err=>res.json(err));
- });
+// Mark todo as done
+app.put('/edit/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await TodoModel.findByIdAndUpdate(id, { done: true }, { new: true });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to mark as done' });
+  }
+});
 
-app.delete('/delete/:id',(req,res)=>{
-  const{id} = req.params;
-  TodoModel.findByIdAndDelete({_id:id})
-  .then(result=> res.json(result))
-  .catch(err=>res.json(err));
- }); 
+// Update task name
+app.put('/update/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { task } = req.body;
+    const result = await TodoModel.findByIdAndUpdate(id, { task }, { new: true });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
 
-module.exports=app;
+// Delete todo
+app.delete('/delete/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await TodoModel.findByIdAndDelete(id);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+// start todo
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server listening on port: ${PORT}`);
+});
